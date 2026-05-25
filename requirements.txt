@@ -1,0 +1,12 @@
+# ── Phishing Email Detection Model ───────────────────────────
+scikit-learn>=1.3.0
+numpy>=1.24.0
+pandas>=2.0.0
+joblib>=1.3.0
+
+# ── Vulnerability Scanner ─────────────────────────────────────
+# Uses Python standard library only (socket, ssl, urllib)
+# No additional packages required
+
+# ── Password Strength Analyzer ────────────────────────────────
+# Runs in the browser (HTML/JS) — no Python packages required

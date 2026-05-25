@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-title">Create Account 🚀</div>
+  <div class="card-sub">Join SecureAuth — your data stays protected</div>
+
+  <form method="POST" action="{{ url_for('register') }}" autocomplete="off" novalidate>
+    <div class="form-group">
+      <label class="form-label" for="username">Username</label>
+      <input class="form-input" type="text" id="username" name="username"
+             value="{{ username|default('') }}"
+             placeholder="3–32 chars: letters, digits, _ . -"
+             autocomplete="username" required maxlength="32" spellcheck="false"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="email">Email Address</label>
+      <input class="form-input" type="email" id="email" name="email"
+             value="{{ email|default('') }}"
+             placeholder="you@example.com"
+             autocomplete="email" required maxlength="254"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="password">Password</label>
+      <div class="input-wrapper">
+        <input class="form-input" type="password" id="password" name="password"
+               placeholder="Min 8 chars with mixed types"
+               autocomplete="new-password" required maxlength="128"
+               oninput="checkStrength(this.value)"
+               style="padding-right: 44px;"/>
+        <button type="button" class="toggle-pw" onclick="togglePw('password', this)">👁️</button>
+      </div>
+      <!-- Live strength meter -->
+      <div class="pw-strength" id="strengthBox" style="display:none;">
+        <div class="pw-strength-bar">
+          <div class="pw-strength-fill" id="strengthFill"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:.75rem;color:var(--muted);">Strength</span>
+          <span style="font-size:.75rem;font-weight:700;" id="strengthLabel"></span>
+        </div>
+        <div class="pw-checks" id="pwChecks">
+          <div class="pw-check" id="chk-length">✗ At least 8 characters</div>
+          <div class="pw-check" id="chk-uppercase">✗ Uppercase letter</div>
+          <div class="pw-check" id="chk-lowercase">✗ Lowercase letter</div>
+          <div class="pw-check" id="chk-digit">✗ Number (0–9)</div>
+          <div class="pw-check" id="chk-special">✗ Special character</div>
+          <div class="pw-check" id="chk-long">✗ 12+ characters (bonus)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="confirm">Confirm Password</label>
+      <div class="input-wrapper">
+        <input class="form-input" type="password" id="confirm" name="confirm"
+               placeholder="Repeat your password"
+               autocomplete="new-password" required maxlength="128"
+               oninput="checkMatch()"
+               style="padding-right: 44px;"/>
+        <button type="button" class="toggle-pw" onclick="togglePw('confirm', this)">👁️</button>
+      </div>
+      <div id="matchMsg" style="font-size:.76rem;margin-top:5px;"></div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">✨ Create Account</button>
+  </form>
+
+  <div class="divider">or</div>
+  <p class="text-center text-muted">
+    Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+  </p>
+
+  <div class="security-badges">
+    <div class="badge">🔑 <span>bcrypt</span> cost=12</div>
+    <div class="badge">🛡️ <span>Parameterised</span> queries</div>
+    <div class="badge">✅ <span>Input</span> validated</div>
+  </div>
+</div>
+
+<script>
+function togglePw(inputId, btn) {
+  const el = document.getElementById(inputId);
+  const shown = el.type === 'text';
+  el.type = shown ? 'password' : 'text';
+  btn.textContent = shown ? '👁️' : '🙈';
+}
+
+const COLOURS = ['#ef4444','#f97316','#eab308','#22c55e','#10b981','#a78bfa'];
+const LEVELS  = ['','Very Weak','Weak','Fair','Strong','Very Strong'];
+const WIDTHS  = [0, 20, 38, 55, 72, 88, 100];
+
+async function checkStrength(pw) {
+  const box = document.getElementById('strengthBox');
+  if (!pw) { box.style.display = 'none'; return; }
+  box.style.display = '';
+
+  try {
+    const res  = await fetch('/api/password-strength', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({password: pw})
+    });
+    const data = await res.json();
+    const { checks, score, level } = data;
+
+    const fill  = document.getElementById('strengthFill');
+    const label = document.getElementById('strengthLabel');
+    fill.style.width      = WIDTHS[score] + '%';
+    fill.style.background = COLOURS[Math.min(score-1, COLOURS.length-1)] || '#ef4444';
+    label.textContent     = level;
+    label.style.color     = COLOURS[Math.min(score-1, COLOURS.length-1)] || '#ef4444';
+
+    const map = {
+      length: 'chk-length', uppercase: 'chk-uppercase',
+      lowercase: 'chk-lowercase', digit: 'chk-digit',
+      special: 'chk-special', long: 'chk-long'
+    };
+    const labels = {
+      length: '✓ At least 8 characters', uppercase: '✓ Uppercase letter',
+      lowercase: '✓ Lowercase letter', digit: '✓ Number (0–9)',
+      special: '✓ Special character', long: '✓ 12+ characters (bonus)'
+    };
+    const fail = {
+      length: '✗ At least 8 characters', uppercase: '✗ Uppercase letter',
+      lowercase: '✗ Lowercase letter', digit: '✗ Number (0–9)',
+      special: '✗ Special character', long: '✗ 12+ characters (bonus)'
+    };
+    for (const [key, elId] of Object.entries(map)) {
+      const el = document.getElementById(elId);
+      el.textContent = checks[key] ? labels[key] : fail[key];
+      el.className   = 'pw-check' + (checks[key] ? ' ok' : '');
+    }
+  } catch(e) {}
+}
+
+function checkMatch() {
+  const pw   = document.getElementById('password').value;
+  const conf = document.getElementById('confirm').value;
+  const msg  = document.getElementById('matchMsg');
+  if (!conf) { msg.textContent = ''; return; }
+  if (pw === conf) {
+    msg.textContent = '✅ Passwords match';
+    msg.style.color = '#22c55e';
+  } else {
+    msg.textContent = '❌ Passwords do not match';
+    msg.style.color = '#ef4444';
+  }
+}
+</script>
+{% endblock %}
